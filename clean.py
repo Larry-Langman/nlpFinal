@@ -16,23 +16,26 @@ text = np.array(text)
 data = {'sentiment': sentiments, 'text': text}
 
 df = pd.DataFrame(data)
-# %% Removing @User
-def remove_pattern(text,pattern):
-    r = re.findall(pattern,text)
-    for i in r:
-        text = re.sub(i,"",text)
-    return text
+# %% Removing @User and URLs
+def remove_mentions(data):
+    return re.sub('@[\w]*', ' ', data)
 
-df['text_cleaned'] = np.vectorize(remove_pattern)(df['text'], '@[\w]*')
+df['text_cleaned']= df['text'].apply(lambda x: remove_mentions(x))
 
+def remove_URLs(data):
+    return re.sub('((www\.[^\s]+)|(https?://[^\s]+))',' ',data)
+
+df['text_cleaned']= df['text_cleaned'].apply(lambda x: remove_URLs(x))
 df.head()
 
 #%% Removing punctuation, numbers, and other unnecessary characters
 df['text_cleaned'] = df['text_cleaned'].str.replace('[^a-zA-Z#]', ' ')
 
 df.head(10)
-# %% Removing short words (len() < 3) (is this necessary?)
-df['text_cleaned'] = df['text_cleaned'].apply(lambda x: ' '.join([w for w in x.split() if len(w) > 3]))
+# %% Removing stop words
+from nltk.corpus import stopwords
+stop = stopwords.words('english')
+df["text_cleaned"]=df["text_cleaned"].str.lower().apply(lambda x: ' '.join([word for word in x.split() if word not in (stop)]))
 
 df.head(10)
 
@@ -52,6 +55,14 @@ tokenized_tweet = tokenized_tweet.apply(lambda x: [ps.stem(i) for i in x])
 
 tokenized_tweet.head()
 
+# %% Lemmatizing
+from nltk import WordNetLemmatizer
+lm = WordNetLemmatizer()
+
+tokenized_tweet = tokenized_tweet.apply(lambda x: [lm.lemmatize(i) for i in x])
+
+tokenized_tweet.head()
+
 # %% Put the tokens in the array back to a string
 for i in range(len(tokenized_tweet)):
     tokenized_tweet[i] = ' '.join(tokenized_tweet[i])
@@ -65,6 +76,8 @@ df.head()
 df['sentiment'].replace(to_replace=4, value=1, inplace=True)
 
 # shuffle the data (the original data is sorted by the sentiments, so that we cannot choose the first N rows to train)
-df_shuffled=df.sample(frac=1).reset_index(drop=True)
+# df_shuffled=df.sample(frac=1).reset_index(drop=True)
 
-df_shuffled.to_csv('data_cleaned.csv', index=False)
+df.to_csv('data_cleaned.csv', index=False)
+
+# %%
